@@ -87,8 +87,8 @@ for sent in train:
     tags.append(sent[1])
     for w in sent[0]:
         words.append(w)
-	wc[w] += 1
-	chars.update(w)
+        wc[w] += 1
+        chars.update(w)
 words.append("_UNK_")
 chars.add("_UNK_")
 chars.add("<*>")
@@ -129,7 +129,7 @@ class Model(nn.Module):
         self.proj2 = nn.Linear(MLP_SIZE, 1)
 
     def forward(self, words, volatile=False):
-	needs_chars = []
+        needs_chars = []
         char_ids = []
 
         for i, w in enumerate(words):
@@ -141,7 +141,7 @@ class Model(nn.Module):
             if max_len < 5:
                 max_len = 5
             fwd_char_ids = [ids + [pad_char for _ in range(max_len - len(ids))] for ids in char_ids]
-            
+
 
             embeddings = self.lookup_c(get_var(torch.LongTensor(fwd_char_ids))) #(3,7,50)
 
@@ -152,7 +152,7 @@ class Model(nn.Module):
             x2 = F.max_pool1d(x2, x2.size(2)).squeeze(2)
 
             x3 = self.conv13(embeddings)
-	    x3 = F.relu(x3).squeeze(2)
+            x3 = F.relu(x3).squeeze(2)
             x3 = F.max_pool1d(x3, x3.size(2)).squeeze(2)
 
             x4 = self.conv13(embeddings)
@@ -161,14 +161,14 @@ class Model(nn.Module):
 
 
             embeddings = torch.cat((x2, x3, x4), 1) #(3,300)
-         
+
         embeddings = embeddings.unsqueeze(0)
         embeddings, h = self.lstm(embeddings)
         embeddings = self.dropout(embeddings)
-	embeddings = torch.transpose(embeddings,2,1)
-	embeddings = F.max_pool1d(embeddings, embeddings.size(2)).squeeze(2)
-	out = self.proj2(self.proj1(embeddings)).squeeze(0) #(3,4)
-	outsig = F.sigmoid(out)
+        embeddings = torch.transpose(embeddings,2,1)
+        embeddings = F.max_pool1d(embeddings, embeddings.size(2)).squeeze(2)
+        out = self.proj2(self.proj1(embeddings)).squeeze(0) #(3,4)
+        outsig = F.sigmoid(out)
         return out
 
 
@@ -227,27 +227,33 @@ for ITER in range(3):
         tags = s[1]
         count = count + len(words)
         preds = model(words)
-	print (preds)
+        print (preds)
         #golds = [tags]
-		
-	golds = get_var(torch.LongTensor([0,0]))
-	if tags == 'tag1':
-	    golds = get_var(torch.LongTensor([1]))
-	else:
-	    golds = get_var(torch.LongTensor([0]))
-	
+
+        #golds = get_var(torch.LongTensor([0,0]))
+        golds = get_var(torch.FloatTensor([0,0]))
+        if tags == 'tag1':
+            #golds = get_var(torch.LongTensor([1]))
+            golds = get_var(torch.FloatTensor([1]))
+        else:
+            #golds = get_var(torch.LongTensor([0]))
+            golds = get_var(torch.FloatTensor([0]))
+
         Y = golds
-	#Y = get_var(torch.LongTensor([vt.w2i[t] for t in golds]))
-	#pred = (preds.data.max(1, keepdim=True)[1]).long()
+        #Y = get_var(torch.LongTensor([vt.w2i[t] for t in golds]))
+        #pred = (preds.data.max(1, keepdim=True)[1]).long()
         #predicted = pred.eq(Y.data.view_as(pred))
         #correct += predicted.sum()
-	print (preds.size())
-	print (Y.size())
-	#exit(1)
+        print (preds.size())
+        print (Y.size())
+        print("Y is ",Y)
+        print("preds is",preds)
+        #exit(1)
         #loss = F.cross_entropy(preds, Y)
-	loss1 = loss(preds, Y)
-	print (loss)
-	#exit(1)
+        
+        loss1 = loss(preds, Y)
+        print ("Loss is ",loss1)
+        #exit(1)
         nn.utils.clip_grad_norm(model.parameters(), 0.25)
         # log / optim
         #this_loss += loss.data[0]*len(golds)
@@ -255,7 +261,7 @@ for ITER in range(3):
         optimizer.zero_grad()
         loss1.backward()
         optimizer.step()
-        epoch_loss = epoch_loss + loss[0]
+        epoch_loss = epoch_loss + loss1[0]
     torch.save(model.state_dict(), './current_model1.pt')
     print("epoch %r finished" % ITER)
     print("Epoch loss : ",  epoch_loss /count)
