@@ -13,7 +13,8 @@ from torch import nn
 from torch import optim
 from torch.autograd import Variable
 from torch.nn import functional as F
-
+import csv
+import re
 '''
 parser = argparse.ArgumentParser()
 parser.add_argument('CEMBED_SIZE', type=int, help='char embedding size')
@@ -31,10 +32,10 @@ MLP_SIZE = 150
 TIMEOUT = 300000
 
 # format of files: each line is "word1|tag2 word2|tag2 ..."
-#train_file = "data/tags/train.txt"
-#dev_file = "data/tags/dev.txt"
-train_file = "train.txt"
-dev_file = "dev.txt"
+train_file = "/Users/abhishek/Desktop/Toxic-Comment-Classification/offensive-language/data/kaggle/train1.csv"
+dev_file = "/Users/abhishek/Desktop/Toxic-Comment-Classification/offensive-language/data/kaggle/dev1.csv"
+#train_file = "train.txt"
+#dev_file = "dev.txt"
 
 
 class Vocab:
@@ -56,12 +57,26 @@ class Vocab:
     def size(self):
         return len(self.w2i.keys())
 
+def myread1(fname):
+    with open(train_file, 'r') as csvfile:
+        reader = csv.reader(csvfile)
+        i = 0
+        for row in reader:
+            if i==0:
+                i+=1
+                continue
+            line=row[1:7]
+            sent=line[0].strip()
+            sent = re.sub(r'[^\w\s]','',sent).split()
+            tag=line[1]
+            yield (sent,tag)
 def myread(fname):
     with open(fname,'r') as fh:
         for line in fh:
             line = line.strip().split()
             sent = line[:-1]
             tag = line[-1]
+            print(sent,tag)
             yield (sent, tag)
 
 
@@ -77,8 +92,8 @@ def read(fname):
             sent = [tuple(x.rsplit("|", 1)) for x in line]
             yield sent
 
-train = list(myread(train_file))
-dev = list(myread(dev_file))
+train = list(myread1(train_file))
+dev = list(myread1(dev_file))
 words = []
 tags = []
 chars = set()
@@ -167,9 +182,10 @@ class Model(nn.Module):
         embeddings = self.dropout(embeddings)
         embeddings = torch.transpose(embeddings,2,1)
         embeddings = F.max_pool1d(embeddings, embeddings.size(2)).squeeze(2)
+
         out = self.proj2(self.proj1(embeddings)).squeeze(0) #(3,4)
         outsig = F.sigmoid(out)
-        return out
+        return outsig
 
 
 model = Model()
@@ -181,7 +197,7 @@ if torch.cuda.is_available():
 optimizer = optim.Adam(model.parameters(), lr = 0.0001, weight_decay=0.000001)
 
 loss = nn.BCELoss()
-
+#loss = nn.CrossEntropyLoss()
 
 print("startup time: %r" % (time.time() - start))
 start = time.time()
@@ -232,7 +248,7 @@ for ITER in range(3):
 
         #golds = get_var(torch.LongTensor([0,0]))
         golds = get_var(torch.FloatTensor([0,0]))
-        if tags == 'tag1':
+        if tags == '1' or tags==1:
             #golds = get_var(torch.LongTensor([1]))
             golds = get_var(torch.FloatTensor([1]))
         else:
@@ -265,5 +281,4 @@ for ITER in range(3):
     torch.save(model.state_dict(), './current_model1.pt')
     print("epoch %r finished" % ITER)
     print("Epoch loss : ",  epoch_loss /count)
-    print("Correct :", correct)
 
