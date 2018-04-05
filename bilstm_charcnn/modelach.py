@@ -32,8 +32,8 @@ MLP_SIZE = 150
 TIMEOUT = 300000
 
 # format of files: each line is "word1|tag2 word2|tag2 ..."
-train_file = "/Users/abhishek/Desktop/Toxic-Comment-Classification/offensive-language/data/kaggle/train1.csv"
-dev_file = "/Users/abhishek/Desktop/Toxic-Comment-Classification/offensive-language/data/kaggle/dev1.csv"
+train_file = "../data/kaggle/train.csv"
+dev_file = "/Users/abhishek/Desktop/Toxic-Comment-Classification/offensive-language/data/kaggle/dev.csv"
 #train_file = "train.txt"
 #dev_file = "dev.txt"
 
@@ -93,7 +93,9 @@ def read(fname):
             yield sent
 
 train = list(myread1(train_file))
-dev = list(myread1(dev_file))
+print(len(train))
+dev = list(train[:int(len(train)/5)])
+train = list(train[int(len(train)/5):])
 words = []
 tags = []
 chars = set()
@@ -209,6 +211,7 @@ for ITER in range(3):
     correct = 0
     total_correct = 0
     #random.shuffle(train)
+    
     for s in train:
         i += 1
         #print(i)
